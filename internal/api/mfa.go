@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/aaronarduino/goqrsvg"
 	svg "github.com/ajstarks/svgo"
@@ -94,11 +95,23 @@ func (a *API) EnrollFactor(w http.ResponseWriter, r *http.Request) error {
 		issuer = params.Issuer
 	}
 
-	// Read from DB for certainty
 	factors, err := models.FindFactorsByUser(a.db, user)
 	if err != nil {
 		return internalServerError("error validating number of factors in system").WithInternalError(err)
 	}
+
+	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
+
+	// Cleanup inactive  factors
+	for _, factor := range factors {
+		// Current definition of an inactive factor
+		if !factor.IsVerified() && len(factor.Challenge) == 0 && factor.CreatedAt.Before(fiveMinutesAgo) {
+			if err := a.db.Destroy(factor); err != nil {
+				return internalServerError("error deleting factors").WithInternalError(err)
+			}
+		}
+	}
+	// We also need to adjust the length of factors again here since destroying it in db doesn't destroy here
 
 	if len(factors) >= int(config.MFA.MaxEnrolledFactors) {
 		return forbiddenError("Enrolled factors exceed allowed limit, unenroll to continue")
