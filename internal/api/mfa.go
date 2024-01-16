@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/aaronarduino/goqrsvg"
 	svg "github.com/ajstarks/svgo"
@@ -99,33 +98,29 @@ func (a *API) EnrollFactor(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return internalServerError("error validating number of factors in system").WithInternalError(err)
 	}
-
-	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
+	factorCount := len(factors)
+	numVerifiedFactors := 0
 
 	// Cleanup inactive  factors
 	for _, factor := range factors {
-		// Current definition of an inactive factor
-		if !factor.IsVerified() && len(factor.Challenge) == 0 && factor.CreatedAt.Before(fiveMinutesAgo) {
+		if factor.IsExpired(config.MFA.FactorExpiryDuration) {
 			if err := a.db.Destroy(factor); err != nil {
 				return internalServerError("error deleting factors").WithInternalError(err)
 			}
+			// We adjust length of factors as destroying it in the DB doesn't remove it from the array
+			factorCount -= 1
 		}
-	}
-	// We also need to adjust the length of factors again here since destroying it in db doesn't destroy here
-
-	if len(factors) >= int(config.MFA.MaxEnrolledFactors) {
-		return forbiddenError("Enrolled factors exceed allowed limit, unenroll to continue")
-	}
-
-	numVerifiedFactors := 0
-	for _, factor := range factors {
 		if factor.IsVerified() {
 			numVerifiedFactors += 1
 		}
 	}
 
+	if factorCount >= int(config.MFA.MaxEnrolledFactors) {
+		return forbiddenError("Enrolled factors exceed allowed limit, unenroll to continue")
+	}
+
 	if numVerifiedFactors >= config.MFA.MaxVerifiedFactors {
-		return forbiddenError("Maximum number of enrolled factors reached, unenroll to continue")
+		return forbiddenError("Maximum number of verified factors reached, unenroll to continue")
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
@@ -135,6 +130,7 @@ func (a *API) EnrollFactor(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return internalServerError(QRCodeGenerationErrorMessage).WithInternalError(err)
 	}
+
 	var buf bytes.Buffer
 	svgData := svg.New(&buf)
 	qrCode, _ := qr.Encode(key.String(), qr.M, qr.Auto)

@@ -223,3 +223,7 @@ func DeleteFactorsByUserId(tx *storage.Connection, userId uuid.UUID) error {
 	}
 	return nil
 }
+
+func (f *Factor) IsExpired(validityDuration time.Duration) bool {
+	return !f.IsVerified() && len(f.Challenge) == 0 && f.CreatedAt.Add(validityDuration).Before(time.Now())
+}
