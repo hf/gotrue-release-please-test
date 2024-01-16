@@ -93,7 +93,7 @@ type JWTConfiguration struct {
 type MFAConfiguration struct {
 	Enabled                     bool          `default:"false"`
 	ChallengeExpiryDuration     float64       `json:"challenge_expiry_duration" default:"300" split_words:"true"`
-	FactorExpiryDuration        time.Duration `json:"factor_expiry_duration" default:"300" split_words:"true"`
+	FactorExpiryDuration        time.Duration `json:"factor_expiry_duration" default:"300s" split_words:"true"`
 	RateLimitChallengeAndVerify float64       `split_words:"true" default:"15"`
 	MaxEnrolledFactors          float64       `split_words:"true" default:"10"`
 	MaxVerifiedFactors          int           `split_words:"true" default:"10"`
