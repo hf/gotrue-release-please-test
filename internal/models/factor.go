@@ -141,7 +141,7 @@ func NewFactor(user *User, friendlyName string, factorType string, state FactorS
 // FindFactorsByUser returns all factors belonging to a user ordered by timestamp
 func FindFactorsByUser(tx *storage.Connection, user *User) ([]*Factor, error) {
 	factors := []*Factor{}
-	if err := tx.Q().Where("user_id = ?", user.ID).Order("created_at asc").All(&factors); err != nil {
+	if err := tx.Eager().Q().Where("user_id = ?", user.ID).Order("created_at asc").All(&factors); err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return factors, nil
 		}
