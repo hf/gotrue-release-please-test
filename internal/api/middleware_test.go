@@ -269,7 +269,7 @@ func (ts *MiddlewareTestSuite) TestRequireSAMLEnabled() {
 		{
 			desc:        "SAML not enabled",
 			isEnabled:   false,
-			expectedErr: notFoundError("SAML 2.0 is disabled"),
+			expectedErr: notFoundError("saml_provider_disabled", "SAML 2.0 is disabled"),
 		},
 		{
 			desc:        "SAML enabled",

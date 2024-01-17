@@ -17,22 +17,22 @@ func (a *API) DeleteIdentity(w http.ResponseWriter, r *http.Request) error {
 
 	claims := getClaims(ctx)
 	if claims == nil {
-		return badRequestError("Could not read claims")
+		return internalServerError("Could not read claims")
 	}
 
 	aud := a.requestAud(ctx, r)
 	if aud != claims.Audience {
-		return badRequestError("Token audience doesn't match request audience")
+		return unauthorizedError("unexpected_audience", "Token audience doesn't match request audience")
 	}
 
 	identityID, err := uuid.FromString(chi.URLParam(r, "identity_id"))
 	if err != nil {
-		return badRequestError("identity_id must be an UUID")
+		return badRequestError("validation_failed", "identity_id must be an UUID")
 	}
 
 	user := getUser(ctx)
 	if len(user.Identities) <= 1 {
-		return badRequestError("User must have at least 1 identity after unlinking")
+		return unprocessableEntityError("last_identity_not_deletable", "User must have at least 1 identity after unlinking")
 	}
 	var identityToBeDeleted *models.Identity
 	for i := range user.Identities {
@@ -43,7 +43,7 @@ func (a *API) DeleteIdentity(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if identityToBeDeleted == nil {
-		return badRequestError("Identity doesn't exist")
+		return notFoundError("identity_not_found", "Identity doesn't exist")
 	}
 
 	err = a.db.Transaction(func(tx *storage.Connection) error {
@@ -59,7 +59,7 @@ func (a *API) DeleteIdentity(w http.ResponseWriter, r *http.Request) error {
 		}
 		if terr := user.UpdateUserEmail(tx); terr != nil {
 			if models.IsUniqueConstraintViolatedError(terr) {
-				return forbiddenError("Unable to unlink identity due to email conflict").WithInternalError(terr)
+				return unprocessableEntityError("email_conflict_identity_not_deletable", "Unable to unlink identity due to email conflict").WithInternalError(terr)
 			}
 			return internalServerError("Database error updating user email").WithInternalError(terr)
 		}
@@ -102,9 +102,9 @@ func (a *API) linkIdentityToUser(ctx context.Context, tx *storage.Connection, us
 	}
 	if identity != nil {
 		if identity.UserID == targetUser.ID {
-			return nil, badRequestError("Identity is already linked")
+			return nil, unprocessableEntityError("identity_already_exists", "Identity is already linked")
 		}
-		return nil, badRequestError("Identity is already linked to another user")
+		return nil, unprocessableEntityError("identity_already_exists", "Identity is already linked to another user")
 	}
 	if _, terr := a.createNewIdentity(tx, targetUser, providerType, structs.Map(userData.Metadata)); terr != nil {
 		return nil, terr

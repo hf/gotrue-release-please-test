@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 
 	"github.com/pkg/errors"
-	"github.com/supabase/auth/internal/conf"
 	"github.com/supabase/auth/internal/observability"
 	"github.com/supabase/auth/internal/utilities"
 )
@@ -65,26 +64,11 @@ func (e *OAuthError) Cause() error {
 	return e
 }
 
-func invalidSignupError(config *conf.GlobalConfiguration) *HTTPError {
-	var msg string
-	if config.External.Email.Enabled && config.External.Phone.Enabled {
-		msg = "To signup, please provide your email or phone number"
-	} else if config.External.Email.Enabled {
-		msg = "To signup, please provide your email"
-	} else if config.External.Phone.Enabled {
-		msg = "To signup, please provide your phone number"
-	} else {
-		// 3rd party OAuth signups
-		msg = "To signup, please provide required fields"
-	}
-	return unprocessableEntityError(msg)
-}
-
 func oauthError(err string, description string) *OAuthError {
 	return &OAuthError{Err: err, Description: description}
 }
 
-func badRequestError(fmtString string, args ...interface{}) *HTTPError {
+func badRequestError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusBadRequest, fmtString, args...)
 }
 
@@ -92,27 +76,27 @@ func internalServerError(fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusInternalServerError, fmtString, args...)
 }
 
-func notFoundError(fmtString string, args ...interface{}) *HTTPError {
+func notFoundError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusNotFound, fmtString, args...)
 }
 
-func expiredTokenError(fmtString string, args ...interface{}) *HTTPError {
+func expiredTokenError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusUnauthorized, fmtString, args...)
 }
 
-func unauthorizedError(fmtString string, args ...interface{}) *HTTPError {
+func unauthorizedError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusUnauthorized, fmtString, args...)
 }
 
-func forbiddenError(fmtString string, args ...interface{}) *HTTPError {
+func forbiddenError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusForbidden, fmtString, args...)
 }
 
-func unprocessableEntityError(fmtString string, args ...interface{}) *HTTPError {
+func unprocessableEntityError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusUnprocessableEntity, fmtString, args...)
 }
 
-func tooManyRequestsError(fmtString string, args ...interface{}) *HTTPError {
+func tooManyRequestsError(reason, fmtString string, args ...interface{}) *HTTPError {
 	return httpError(http.StatusTooManyRequests, fmtString, args...)
 }
 
@@ -165,45 +149,6 @@ func httpError(code int, fmtString string, args ...interface{}) *HTTPError {
 		Code:    code,
 		Message: fmt.Sprintf(fmtString, args...),
 	}
-}
-
-// OTPError is a custom error struct for phone auth errors
-type OTPError struct {
-	Err             string `json:"error"`
-	Description     string `json:"error_description,omitempty"`
-	InternalError   error  `json:"-"`
-	InternalMessage string `json:"-"`
-}
-
-func (e *OTPError) Error() string {
-	if e.InternalMessage != "" {
-		return e.InternalMessage
-	}
-	return fmt.Sprintf("%s: %s", e.Err, e.Description)
-}
-
-// WithInternalError adds internal error information to the error
-func (e *OTPError) WithInternalError(err error) *OTPError {
-	e.InternalError = err
-	return e
-}
-
-// WithInternalMessage adds internal message information to the error
-func (e *OTPError) WithInternalMessage(fmtString string, args ...interface{}) *OTPError {
-	e.InternalMessage = fmt.Sprintf(fmtString, args...)
-	return e
-}
-
-// Cause returns the root cause error
-func (e *OTPError) Cause() error {
-	if e.InternalError != nil {
-		return e.InternalError
-	}
-	return e
-}
-
-func otpError(err string, description string) *OTPError {
-	return &OTPError{Err: err, Description: description}
 }
 
 // Recoverer is a middleware that recovers from panics, logs the panic (and a
@@ -278,11 +223,6 @@ func handleError(err error, w http.ResponseWriter, r *http.Request) {
 			handleError(jsonErr, w, r)
 		}
 	case *OAuthError:
-		log.WithError(e.Cause()).Info(e.Error())
-		if jsonErr := sendJSON(w, http.StatusBadRequest, e); jsonErr != nil {
-			handleError(jsonErr, w, r)
-		}
-	case *OTPError:
 		log.WithError(e.Cause()).Info(e.Error())
 		if jsonErr := sendJSON(w, http.StatusBadRequest, e); jsonErr != nil {
 			handleError(jsonErr, w, r)

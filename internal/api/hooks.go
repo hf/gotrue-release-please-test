@@ -135,7 +135,7 @@ func (w *Webhook) trigger() (io.ReadCloser, error) {
 	}
 
 	hooklog.Infof("Failed to process webhook for %s after %d attempts", w.URL, w.Retries)
-	return nil, unprocessableEntityError("Failed to handle signup webhook")
+	return nil, internalServerError("Failed to handle signup webhook")
 }
 
 func (w *Webhook) generateSignature() (string, error) {

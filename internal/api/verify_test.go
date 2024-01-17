@@ -1103,7 +1103,7 @@ func (ts *VerifyTestSuite) TestPrepErrorRedirectURL() {
 		ts.Run(c.desc, func() {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			rurl, err := ts.API.prepErrorRedirectURL(badRequestError(DefaultError), w, req, c.rurl, c.flowType)
+			rurl, err := ts.API.prepErrorRedirectURL(badRequestError("validation_failed", DefaultError), w, req, c.rurl, c.flowType)
 			require.NoError(ts.T(), err)
 			require.Equal(ts.T(), c.expected, rurl)
 		})
@@ -1153,7 +1153,7 @@ func (ts *VerifyTestSuite) TestVerifyValidateParams() {
 				Token: "some-token",
 			},
 			method:   http.MethodPost,
-			expected: badRequestError("Only an email address or phone number should be provided on verify"),
+			expected: badRequestError("validation_failed", "Only an email address or phone number should be provided on verify"),
 		},
 		{
 			desc: "Cannot send both TokenHash and Token",
@@ -1163,7 +1163,7 @@ func (ts *VerifyTestSuite) TestVerifyValidateParams() {
 				TokenHash: "some-token-hash",
 			},
 			method:   http.MethodPost,
-			expected: badRequestError("Verify requires either a token or a token hash"),
+			expected: badRequestError("validation_failed", "Verify requires either a token or a token hash"),
 		},
 		{
 			desc: "No verification type specified",
@@ -1172,7 +1172,7 @@ func (ts *VerifyTestSuite) TestVerifyValidateParams() {
 				Email: "email@example.com",
 			},
 			method:   http.MethodPost,
-			expected: badRequestError("Verify requires a verification type"),
+			expected: badRequestError("validation_failed", "Verify requires a verification type"),
 		},
 	}
 

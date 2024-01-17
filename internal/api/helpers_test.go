@@ -16,12 +16,12 @@ func TestIsValidCodeChallenge(t *testing.T) {
 		{
 			challenge:     "invalid",
 			isValid:       false,
-			expectedError: badRequestError("code challenge has to be between %v and %v characters", MinCodeChallengeLength, MaxCodeChallengeLength),
+			expectedError: badRequestError("validation_failed", "code challenge has to be between %v and %v characters", MinCodeChallengeLength, MaxCodeChallengeLength),
 		},
 		{
 			challenge:     "codechallengecontainsinvalidcharacterslike@$^&*",
 			isValid:       false,
-			expectedError: badRequestError("code challenge can only contain alphanumeric characters, hyphens, periods, underscores and tildes"),
+			expectedError: badRequestError("validation_failed", "code challenge can only contain alphanumeric characters, hyphens, periods, underscores and tildes"),
 		},
 		{
 			challenge:     "validchallengevalidchallengevalidchallengevalidchallenge",
@@ -56,12 +56,12 @@ func TestIsValidPKCEParmas(t *testing.T) {
 		{
 			challengeMethod: "test",
 			challenge:       "",
-			expected:        badRequestError(InvalidPKCEParamsErrorMessage),
+			expected:        badRequestError("validation_failed", InvalidPKCEParamsErrorMessage),
 		},
 		{
 			challengeMethod: "",
 			challenge:       "test",
-			expected:        badRequestError(InvalidPKCEParamsErrorMessage),
+			expected:        badRequestError("validation_failed", InvalidPKCEParamsErrorMessage),
 		},
 	}
 

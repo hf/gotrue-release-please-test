@@ -56,7 +56,7 @@ func (a *API) GetExternalProviderRedirectURL(w http.ResponseWriter, r *http.Requ
 
 	p, err := a.Provider(ctx, providerType, scopes)
 	if err != nil {
-		return "", badRequestError("Unsupported provider: %+v", err).WithInternalError(err)
+		return "", badRequestError("validation_failed", "Unsupported provider: %+v", err).WithInternalError(err)
 	}
 
 	inviteToken := query.Get("invite_token")
@@ -64,7 +64,7 @@ func (a *API) GetExternalProviderRedirectURL(w http.ResponseWriter, r *http.Requ
 		_, userErr := models.FindUserByConfirmationToken(db, inviteToken)
 		if userErr != nil {
 			if models.IsNotFoundError(userErr) {
-				return "", notFoundError(userErr.Error())
+				return "", notFoundError("user_not_found", "User identified by token not found")
 			}
 			return "", internalServerError("Database error finding user").WithInternalError(userErr)
 		}
@@ -82,14 +82,12 @@ func (a *API) GetExternalProviderRedirectURL(w http.ResponseWriter, r *http.Requ
 	if flowType == models.PKCEFlow {
 		codeChallengeMethodType, err := models.ParseCodeChallengeMethod(codeChallengeMethod)
 		if err != nil {
-			return "", err
+			return "", badRequestError("validation_failed", "Code challenge not valid").WithInternalError(err)
 		}
-		flowState, err := models.NewFlowState(providerType, codeChallenge, codeChallengeMethodType, models.OAuth)
-		if err != nil {
-			return "", err
-		}
+		flowState := models.NewFlowState(providerType, codeChallenge, codeChallengeMethodType, models.OAuth)
+
 		if err := a.db.Create(flowState); err != nil {
-			return "", err
+			return "", internalServerError("Failed to create flow state").WithInternalError(err)
 		}
 		flowStateID = flowState.ID.String()
 	}
@@ -134,6 +132,7 @@ func (a *API) GetExternalProviderRedirectURL(w http.ResponseWriter, r *http.Requ
 	}
 
 	authURL := p.AuthCodeURL(tokenString, authUrlParams...)
+
 	return authURL, nil
 }
 
@@ -203,9 +202,12 @@ func (a *API) internalExternalProviderCallback(w http.ResponseWriter, r *http.Re
 	// if there's a non-empty FlowStateID we perform PKCE Flow
 	if flowStateID := getFlowStateID(ctx); flowStateID != "" {
 		flowState, err = models.FindFlowStateByID(a.db, flowStateID)
-		if err != nil {
-			return err
+		if models.IsNotFoundError(err) {
+			return notFoundError("flow_state_not_found", "Flow state not found").WithInternalError(err)
+		} else if err != nil {
+			return internalServerError("Failed to find flow state").WithInternalError(err)
 		}
+
 	}
 
 	var user *models.User
@@ -304,7 +306,7 @@ func (a *API) createAccountFromExternalIdentity(tx *storage.Connection, r *http.
 
 	case models.CreateAccount:
 		if config.DisableSignup {
-			return nil, forbiddenError("Signups not allowed for this instance")
+			return nil, forbiddenError("signup_disabled", "Signups not allowed for this instance")
 		}
 
 		params := &SignupParams{
@@ -351,14 +353,14 @@ func (a *API) createAccountFromExternalIdentity(tx *storage.Connection, r *http.
 		}
 
 	case models.MultipleAccounts:
-		return nil, internalServerError(fmt.Sprintf("Multiple accounts with the same email address in the same linking domain detected: %v", decision.LinkingDomain))
+		return nil, internalServerError("Multiple accounts with the same email address in the same linking domain detected: %v", decision.LinkingDomain)
 
 	default:
-		return nil, internalServerError(fmt.Sprintf("Unknown automatic linking decision: %v", decision.Decision))
+		return nil, internalServerError("Unknown automatic linking decision: %v", decision.Decision)
 	}
 
 	if user.IsBanned() {
-		return nil, unauthorizedError("User is unauthorized")
+		return nil, unauthorizedError("user_banned", "User is banned")
 	}
 
 	if !user.IsConfirmed() {
@@ -391,7 +393,7 @@ func (a *API) createAccountFromExternalIdentity(tx *storage.Connection, r *http.
 				externalURL := getExternalHost(ctx)
 				if terr = sendConfirmation(tx, user, mailer, config.SMTP.MaxFrequency, referrer, externalURL, config.Mailer.OtpLength, models.ImplicitFlow); terr != nil {
 					if errors.Is(terr, MaxFrequencyLimitError) {
-						return nil, tooManyRequestsError("For security purposes, you can only request this once every minute")
+						return nil, tooManyRequestsError("over_email_send_rate", "For security purposes, you can only request this once every minute")
 					}
 					return nil, internalServerError("Error sending confirmation mail").WithInternalError(terr)
 				}
@@ -399,9 +401,9 @@ func (a *API) createAccountFromExternalIdentity(tx *storage.Connection, r *http.
 			}
 			if !config.Mailer.AllowUnverifiedEmailSignIns {
 				if emailConfirmationSent {
-					return nil, storage.NewCommitWithError(unauthorizedError(fmt.Sprintf("Unverified email with %v. A confirmation email has been sent to your %v email", providerType, providerType)))
+					return nil, storage.NewCommitWithError(unauthorizedError("provider_email_needs_verification", fmt.Sprintf("Unverified email with %v. A confirmation email has been sent to your %v email", providerType, providerType)))
 				}
-				return nil, storage.NewCommitWithError(unauthorizedError(fmt.Sprintf("Unverified email with %v. Verify the email with %v in order to sign in", providerType, providerType)))
+				return nil, storage.NewCommitWithError(unauthorizedError("provider_email_needs_verification", fmt.Sprintf("Unverified email with %v. Verify the email with %v in order to sign in", providerType, providerType)))
 			}
 		}
 	} else {
@@ -423,7 +425,7 @@ func (a *API) processInvite(r *http.Request, ctx context.Context, tx *storage.Co
 	user, err := models.FindUserByConfirmationToken(tx, inviteToken)
 	if err != nil {
 		if models.IsNotFoundError(err) {
-			return nil, notFoundError(err.Error())
+			return nil, notFoundError("invite_not_found", "Invite not found")
 		}
 		return nil, internalServerError("Database error finding user").WithInternalError(err)
 	}
@@ -439,7 +441,7 @@ func (a *API) processInvite(r *http.Request, ctx context.Context, tx *storage.Co
 	}
 
 	if emailData == nil {
-		return nil, badRequestError("Invited email does not match emails from external provider").WithInternalMessage("invited=%s external=%s", user.Email, strings.Join(emails, ", "))
+		return nil, badRequestError("validation_failed", "Invited email does not match emails from external provider").WithInternalMessage("invited=%s external=%s", user.Email, strings.Join(emails, ", "))
 	}
 
 	var identityData map[string]interface{}
@@ -495,8 +497,11 @@ func (a *API) loadExternalState(ctx context.Context, state string) (context.Cont
 	_, err := p.ParseWithClaims(state, &claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(config.JWT.Secret), nil
 	})
-	if err != nil || claims.Provider == "" {
-		return nil, badRequestError("OAuth state is invalid: %v", err)
+	if err != nil {
+		return nil, badRequestError("bad_oauth_state", "OAuth callback with invalid state").WithInternalError(err)
+	}
+	if claims.Provider == "" {
+		return nil, badRequestError("bad_oauth_state", "OAuth callback with invalid state (missing provider)")
 	}
 	if claims.InviteToken != "" {
 		ctx = withInviteToken(ctx, claims.InviteToken)
@@ -510,12 +515,12 @@ func (a *API) loadExternalState(ctx context.Context, state string) (context.Cont
 	if claims.LinkingTargetID != "" {
 		linkingTargetUserID, err := uuid.FromString(claims.LinkingTargetID)
 		if err != nil {
-			return nil, badRequestError("invalid target user id")
+			return nil, badRequestError("bad_oauth_state", "OAuth callback with invalid state (linking_target_id must be UUID)")
 		}
 		u, err := models.FindUserByID(a.db, linkingTargetUserID)
 		if err != nil {
 			if models.IsNotFoundError(err) {
-				return nil, notFoundError("Linking target user not found")
+				return nil, notFoundError("user_not_found", "Linking target user not found")
 			}
 			return nil, internalServerError("Database error loading user").WithInternalError(err)
 		}
