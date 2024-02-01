@@ -34,7 +34,7 @@ jobs:
           sparse-checkout: |
             .github
 
-      - if: ${{ github.event_name == 'pull_request' }}
+      - if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           set -ex
 
