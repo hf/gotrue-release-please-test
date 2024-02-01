@@ -39,7 +39,7 @@ jobs:
           set -ex
 
           node .github/workflows/conventional-commits-lint.js pr <<EOF
-          ${{ toJSON(github.event.pull_request) }}
+          ${{ toJSON(github.event) }}
           EOF
 
       - if: ${{ github.event_name == 'push' }}
