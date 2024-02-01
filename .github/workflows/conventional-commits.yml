@@ -21,24 +21,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - run: |
+          set -ex
+
+          cat <<EOF
+          ${{ toJSON(github.event) }}
+          EOF
+
       - uses: actions/checkout@v4
         with:
           ref: master # Always load the latest workflow, not the branch's
           sparse-checkout: |
             .github
 
-      - if: ${{ github.event.pull_request }}
+      - if: ${{ github.event_name == 'pull_request' }}
         run: |
           set -ex
 
           node .github/workflows/conventional-commits-lint.js pr <<EOF
-          ${{ github.event.pull_request && toJSON(github.event.pull_request) }}
+          ${{ toJSON(github.event.pull_request) }}
           EOF
 
-      - if: ${{ github.event.push }}
+      - if: ${{ github.event_name == 'push' }}
         run: |
           set -ex
 
           node .github/workflows/conventional-commits-lint.js push <<EOF
-          ${{ github.event.push && toJSON(github.event.push) }}
+          ${{ toJSON(github.event) }}
           EOF
