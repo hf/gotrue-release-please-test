@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.140.2-rc.1](https://github.com/hf/gotrue-release-please-test/compare/2.140.1-rc.1...v2.140.2-rc.1) (2024-02-01)
+
+
+### Bug Fixes
+
+* upgrade counter to 15 ([19efa89](https://github.com/hf/gotrue-release-please-test/commit/19efa893fb135c8d773f1a287753ce3a40370be6))
+
 ## [2.140.0](https://github.com/hf/gotrue-release-please-test/compare/v2.139.1...v2.140.0) (2024-02-01)
 
 
