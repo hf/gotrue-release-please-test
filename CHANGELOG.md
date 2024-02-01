@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.147.1](https://github.com/hf/gotrue-release-please-test/compare/v2.147.0...v2.147.1) (2024-02-01)
+
+
+### Bug Fixes
+
+* incr counter to 26 on 2.147.0 ([#13](https://github.com/hf/gotrue-release-please-test/issues/13)) ([1d64c0c](https://github.com/hf/gotrue-release-please-test/commit/1d64c0cf452611fc226313326550cab08fcb781e))
+
 ## [2.147.0](https://github.com/hf/gotrue-release-please-test/compare/v2.146.0...v2.147.0) (2024-02-01)
 
 
