@@ -2,7 +2,6 @@ name: Check pull requests
 
 on:
   push:
-    branches: '*'
     branches-ignore: # Run the checks on all branches but the protected ones
       - master
       - release/*
