@@ -126,6 +126,7 @@ jobs:
           GH_TOKEN='${{ github.token }}' gh release upload $RELEASE_NAME ./auth-v$RELEASE_VERSION-x86.tar.gz ./auth-v$RELEASE_VERSION-arm64.tar.gz
 
   publish:
+    runs-on: ubuntu-latest
     needs:
       - release_please
     steps:
