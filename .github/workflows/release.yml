@@ -13,7 +13,6 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      RELEASE_NAME: ${{ steps.versions.RELEASE_NAME }}
       MAIN_RELEASE_VERSION: ${{ steps.versions.MAIN_RELEASE_VERSION }}
       RELEASE_VERSION: ${{ steps.versions.RELEASE_VERSION }}
       RELEASE_CANDIDATE: ${{ steps.versions.RELEASE_CANDIDATE }}
