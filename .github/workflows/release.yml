@@ -133,9 +133,5 @@ jobs:
           set -ex
 
           cat <<EOF
-            ${{ success() }}
-          EOF
-
-          cat <<EOF
             ${{ toJSON(needs) }}
           EOF
