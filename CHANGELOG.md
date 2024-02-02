@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.148.0](https://github.com/hf/gotrue-release-please-test/compare/v2.147.0...v2.148.0) (2024-02-02)
+
+
+### Features
+
+* test 2 ([7927a4f](https://github.com/hf/gotrue-release-please-test/commit/7927a4f6d9debdc79525d0919fbb3169ea156bc1))
+* test this again ([498e4af](https://github.com/hf/gotrue-release-please-test/commit/498e4af464c066f3e57799c606f4fcfff60119e9))
+
+
+### Bug Fixes
+
+* again and again ([d2777bf](https://github.com/hf/gotrue-release-please-test/commit/d2777bfca3c9b5c5700b219a3727cf4e237f5f6f))
+* again? ([07ddc97](https://github.com/hf/gotrue-release-please-test/commit/07ddc9765ea76ad06a4230b8044a133982c28212))
+* another ([ef29b6c](https://github.com/hf/gotrue-release-please-test/commit/ef29b6c8fa7af5aeabc584311fb78f22b4bc0a27))
+* test ([4f8b7c4](https://github.com/hf/gotrue-release-please-test/commit/4f8b7c4ecbf2e96e4f09018ca72f40bcfefe8052))
+* yet again ([b81d193](https://github.com/hf/gotrue-release-please-test/commit/b81d1939e14ef0c6f7c9a604b9d36adeeca7824d))
+
 ## [2.147.0](https://github.com/hf/gotrue-release-please-test/compare/v2.146.0...v2.147.0) (2024-02-01)
 
 
