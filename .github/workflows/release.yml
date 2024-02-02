@@ -139,5 +139,5 @@ jobs:
           set -ex
 
           cat <<EOF
-            ${{ toJSON(needs) }}
+            ${{ toJSON(needs.release_please.outputs) }}
           EOF
