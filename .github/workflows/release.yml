@@ -1,12 +1,13 @@
+name: Release
+
 on:
   push:
     branches:
       - master
       - release/*
 
-name: release-please
 jobs:
-  release-please:
+  release_please:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,6 +25,7 @@ jobs:
           fetch-depth: 0
 
       - if: ${{ steps.release.outputs }}
+        id: versions
         run: |
           set -ex
 
@@ -47,14 +49,24 @@ jobs:
             # is ahead of the most recent non-release-candidate tag, which is
             # part of the rc.<commits> value.
             RELEASE_VERSION=$MAIN_RELEASE_VERSION-rc.$(node -e "console.log('$(git describe --tags --exclude *rc*)'.split('-')[1])")
+
+            # release-please only ignores releases that have a form like [A-Z0-9]<version>, so prefixing with rc<version>
+            RELEASE_NAME="rc$RELEASE_VERSION"
           else
             MAIN_RELEASE_VERSION=${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
             RELEASE_VERSION="$MAIN_RELEASE_VERSION"
+            RELEASE_NAME="v$RELEASE_VERSION"
           fi
 
           echo "MAIN_RELEASE_VERSION=${MAIN_RELEASE_VERSION}" >> "${GITHUB_ENV}"
           echo "RELEASE_VERSION=${RELEASE_VERSION}" >> "${GITHUB_ENV}"
           echo "RELEASE_CANDIDATE=${RELEASE_CANDIDATE}" >> "${GITHUB_ENV}"
+          echo "RELEASE_NAME=${RELEASE_NAME}" >> "${GITHUB_ENV}"
+
+          echo "MAIN_RELEASE_VERSION=${MAIN_RELEASE_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "RELEASE_VERSION=${RELEASE_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "RELEASE_CANDIDATE=${RELEASE_CANDIDATE}" >> "${GITHUB_OUTPUT}"
+          echo "RELEASE_NAME=${RELEASE_NAME}" >> "${GITHUB_OUTPUT}"
 
       - uses: actions/setup-go@v3
         if: ${{ steps.release.outputs.release_created == 'true' || steps.release.outputs.prs_created == 'true' }}
@@ -78,12 +90,8 @@ jobs:
         run: |
           set -ex
 
-          RELEASE_NAME="v$RELEASE_VERSION"
-
           if [ "$RELEASE_CANDIDATE" == "true" ]
           then
-            # release-please only ignores releases that have a form like [A-Z0-9]<version>, so prefixing with rc<version>
-            RELEASE_NAME="rc$RELEASE_VERSION"
             PR_NUMBER='${{ steps.release.outputs.pr && fromJSON(steps.release.outputs.pr).number }}'
 
             GH_TOKEN='${{ github.token }}' gh release \
@@ -117,12 +125,17 @@ jobs:
 
           GH_TOKEN='${{ github.token }}' gh release upload $RELEASE_NAME ./auth-v$RELEASE_VERSION-x86.tar.gz ./auth-v$RELEASE_VERSION-arm64.tar.gz
 
-          #publish:
-          #  needs:
-          #    - releaseplease
-          #  if: success() && needs.releaseplease.outputs.release_created
-          #  # Call publish explicitly because events from actions cannot trigger more actions
-          #  uses: ./.github/workflows/publish.yml
-          #  with:
-          #    version: v${{ needs.release.outputs.tag_name }}
-          #  secrets: inherit
+  publish:
+    needs:
+      - release_please
+    steps:
+      - run: |
+          set -ex
+
+          cat <<EOF
+            ${{ success() }}
+          EOF
+
+          cat <<EOF
+            ${{ toJSON(needs) }}
+          EOF
